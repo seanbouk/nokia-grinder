@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity Web Player | Nokia Grinder</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      body {
+          margin: 0;
+          overflow: hidden;
+          height: 100vh;
+          background-color: black;
+      }
+
+      /* Override the template's styles */
+      #unity-container.unity-desktop {
+          top: 29% !important; /* Change this number (0-100) to move up/down */
+          transform: translate(-50%, 0) !important;
+          height: 16vh; /* Change this number to adjust size */
+          aspect-ratio: 84/48;
+      }
+
+      canvas {
+          width: 100%;
+          height: 100%;
+          image-rendering: pixelated; /* Ensures sharp rendering for pixel art */
+      }
+
+      #touch-controls {
+          position: fixed;
+          top: 0;
+          left: 50%;
+          transform: translate(-50%, 0);
+          height: 100vh;
+          /* Match background image aspect ratio */
+          aspect-ratio: 0.5625;
+          pointer-events: none; /* Allow clicks to pass through container */
+      }
+
+      .touch-button {
+          position: absolute;
+          width: 12vh;
+          height: 7vh;
+          background: rgba(255, 255, 255, 0);
+          border-radius: 40%;
+          pointer-events: auto; /* Re-enable pointer events for buttons */
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+          touch-action: manipulation; /* Disable double-tap zoom */
+          transform: translate(-50%, -50%)
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=84 height=48 tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+    </div>
+    <div id="touch-controls">
+      <!-- Row 1 -->
+      <div id="digit2-button" class="touch-button" style="left: calc(50vh * 0.5625); top: 70%;"></div>
+      <div id="digit3-button" class="touch-button" style="left: calc(72vh * 0.5625); top: 68.5%;"></div>
+      
+      <!-- Row 2 -->
+      <div id="q-button" class="touch-button" style="left: calc(28vh * 0.5625); top: 75.5%;"></div>
+      <div id="w-button" class="touch-button" style="left: calc(50vh * 0.5625); top: 77%;"></div>
+      <div id="e-button" class="touch-button" style="left: calc(72vh * 0.5625); top: 75.5%;"></div>
+      
+      <!-- Row 3 -->
+      <div id="a-button" class="touch-button" style="left: calc(28vh * 0.5625); top: 82.5%;"></div>
+      <div id="s-button" class="touch-button" style="left: calc(50vh * 0.5625); top: 84%;"></div>
+      <div id="d-button" class="touch-button" style="left: calc(72vh * 0.5625); top: 82.5%;"></div>
+      
+      <!-- Row 4 -->
+      <div id="x-button" class="touch-button" style="left: calc(50vh * 0.5625); top: 91%;"></div>
+    </div>
+    <script>
+      // Handle touch/mouse events for virtual buttons
+      function setupTouchControls() {
+        const buttons = {
+          'w': { element: document.getElementById('w-button'), key: 'w' },
+          'a': { element: document.getElementById('a-button'), key: 'a' },
+          's': { element: document.getElementById('s-button'), key: 's' },
+          'd': { element: document.getElementById('d-button'), key: 'd' },
+          'q': { element: document.getElementById('q-button'), key: 'q' },
+          'e': { element: document.getElementById('e-button'), key: 'e' },
+          'x': { element: document.getElementById('x-button'), key: 'x' },
+          'digit2': { element: document.getElementById('digit2-button'), key: '2' },
+          'digit3': { element: document.getElementById('digit3-button'), key: '3' }
+        };
+        
+        function simulateKeyEvent(key, isDown) {
+          const eventType = isDown ? 'keydown' : 'keyup';
+          let keyCode, code;
+          
+          // Map key to proper keyCode and code
+          switch(key.toLowerCase()) {
+            case 'w': keyCode = 87; code = 'KeyW'; break;
+            case 'a': keyCode = 65; code = 'KeyA'; break;
+            case 's': keyCode = 83; code = 'KeyS'; break;
+            case 'd': keyCode = 68; code = 'KeyD'; break;
+            case 'q': keyCode = 81; code = 'KeyQ'; break;
+            case 'e': keyCode = 69; code = 'KeyE'; break;
+            case 'x': keyCode = 88; code = 'KeyX'; break;
+            case '2': keyCode = 50; code = 'Digit2'; break;
+            case '3': keyCode = 51; code = 'Digit3'; break;
+            default: return;
+          }
+
+          // Create and dispatch a keyboard event
+          const event = new KeyboardEvent(eventType, {
+            key: key,
+            code: code,
+            keyCode: keyCode,
+            which: keyCode,
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            repeat: false
+          });
+          
+          // Dispatch to both document and window to ensure Unity's Input system catches it
+          document.dispatchEvent(event);
+          window.dispatchEvent(event);
+          
+          // Also update the web input state if it's the W key
+          if (key.toLowerCase() === 'w' && window.setWKeyState) {
+            window.setWKeyState(isDown);
+          }
+        }
+
+        Object.values(buttons).forEach(button => {
+          if (button.element) {
+            // Mouse events
+            button.element.addEventListener('mousedown', () => simulateKeyEvent(button.key, true));
+            button.element.addEventListener('mouseup', () => simulateKeyEvent(button.key, false));
+            
+            // Touch events
+            button.element.addEventListener('touchstart', (e) => {
+              e.preventDefault(); // Prevent scrolling
+              simulateKeyEvent(button.key, true);
+            });
+            button.element.addEventListener('touchend', () => simulateKeyEvent(button.key, false));
+            button.element.addEventListener('touchcancel', () => simulateKeyEvent(button.key, false));
+          }
+        });
+
+        // Handle touch/mouse release outside buttons
+        document.addEventListener('mouseup', () => {
+          Object.values(buttons).forEach(button => simulateKeyEvent(button.key, false));
+        });
+        document.addEventListener('touchend', () => {
+          Object.values(buttons).forEach(button => simulateKeyEvent(button.key, false));
+        });
+        document.addEventListener('touchcancel', () => {
+          Object.values(buttons).forEach(button => simulateKeyEvent(button.key, false));
+        });
+      }
+
+      function updateColors(background, foreground) {
+        console.log('Updating colors:', background, foreground);
+        
+        // Create a container div for the background image if it doesn't exist
+        let bgContainer = document.getElementById('background-container');
+        if (!bgContainer) {
+          bgContainer = document.createElement('div');
+          bgContainer.id = 'background-container';
+          bgContainer.style.position = 'fixed';
+          bgContainer.style.top = '0';
+          bgContainer.style.left = '0';
+          bgContainer.style.width = '100%';
+          bgContainer.style.height = '100%';
+          bgContainer.style.zIndex = '-1';
+          document.body.insertBefore(bgContainer, document.body.firstChild);
+        }
+        
+        // Set the background color
+        document.body.style.backgroundColor = background;
+        
+        // Create canvas if needed
+        let canvas = document.getElementById('color-processor');
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.id = 'color-processor';
+          canvas.style.display = 'none';
+          document.body.appendChild(canvas);
+        }
+        
+        // Load and process image
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          
+          // Convert foreground color from hex to RGB
+          const fgColor = foreground.match(/[0-9a-f]{2}/gi).map(c => parseInt(c, 16));
+          
+          // Process pixels - replace RGB while keeping alpha
+          for (let i = 0; i < data.length; i += 4) {
+            data[i] = fgColor[0];   // R
+            data[i+1] = fgColor[1]; // G
+            data[i+2] = fgColor[2]; // B
+            // Alpha at data[i+3] is preserved
+          }
+          
+          ctx.putImageData(imageData, 0, 0);
+          
+          // Update background container with processed image
+          bgContainer.style.backgroundImage = `url(${canvas.toDataURL()})`;
+          bgContainer.style.backgroundRepeat = 'no-repeat';
+          bgContainer.style.backgroundPosition = 'center center';
+          bgContainer.style.backgroundSize = 'auto 100vh';
+        };
+        img.src = '3310.png';
+      }
+
+      var canvas = document.querySelector("#unity-canvas");
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/Bin.loader.js";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/Bin.data.gz",
+        frameworkUrl: buildUrl + "/Bin.framework.js.gz",
+        codeUrl: buildUrl + "/Bin.wasm.gz",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "Nokia Grinder",
+        productVersion: "0.1",
+        showBanner: unityShowBanner,
+      };
+
+      // By default, Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      // If you would like all file writes inside Unity Application.persistentDataPath
+      // directory to automatically persist so that the contents are remembered when
+      // the user revisits the site the next time, uncomment the following line:
+      // config.autoSyncPersistentDataPath = true;
+      // This autosyncing is currently not the default behavior to avoid regressing
+      // existing user projects that might rely on the earlier manual
+      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
+      // expected to change.
+
+      if (/iPhoneNO|iPadNO|iPodNO|AndroidNO/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.querySelector("#unity-container").className = "unity-mobile";
+        canvas.className = "unity-mobile";
+
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
+
+
+      } else {
+        // Desktop style: Canvas size is handled by CSS
+        canvas.className = "unity-desktop";
+      }
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          // Initialize touch controls after Unity is loaded
+          setupTouchControls();
+                document.querySelector("#unity-loading-bar").style.display = "none";
+              }).catch((message) => {
+                alert(message);
+              });
+            };
+
+      document.body.appendChild(script);
+
+    </script>
+  </body>
+</html>
