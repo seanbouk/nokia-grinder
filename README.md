@@ -1,6 +1,6 @@
 # Nokia Grinder
 
-A first-person chicken-grinding dungeon crawler rendered at 84x48 pixels in glorious 1-bit color, built for [Nokia Jam 7](https://itch.io/jam/nokiajam7).
+A first-person chicken-grinding doom clone rendered at 84x48 pixels in glorious 1-bit color, built for [Nokia Jam 7](https://itch.io/jam/nokiajam7).
 
 **[Play on GitHub Pages](https://seanbouk.github.io/nokia-grinder/)** | **[Play on itch.io](https://seanofearth.itch.io/chicken-grinder)** (itch.io version may load faster as it serves compressed assets)
 
