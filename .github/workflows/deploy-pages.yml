@@ -27,6 +27,28 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Decompress Unity build for static hosting
+        run: |
+          cd Bin/Build
+          for f in *.gz; do
+            base="${f%.gz}"
+            gunzip -k "$f"
+            mv "$base" "../$base"
+          done
+          # Also keep the loader (not compressed)
+          cp Bin.loader.js ../Bin.loader.js 2>/dev/null || true
+          cd ..
+          # Update index.html to reference decompressed files
+          sed -i 's|Bin\.data\.gz|Bin.data|g' index.html
+          sed -i 's|Bin\.framework\.js\.gz|Bin.framework.js|g' index.html
+          sed -i 's|Bin\.wasm\.gz|Bin.wasm|g' index.html
+          # Move decompressed files into Build/
+          mv Bin.data Build/Bin.data
+          mv Bin.framework.js Build/Bin.framework.js
+          mv Bin.wasm Build/Bin.wasm
+          # Remove .gz originals from deploy
+          rm Build/*.gz
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
